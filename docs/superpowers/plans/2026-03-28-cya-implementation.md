@@ -1000,76 +1000,117 @@ git commit -m "Implement evaluate layer"
 
 - [ ] **Step 1: Write tests**
 
-Note: git-state depends on actual git commands. Tests create a temp git repo, make commits, and verify the detected state.
+The git-state module uses dependency injection — it accepts a `GitRunner` interface so tests can mock all git commands without touching the filesystem or requiring git.
 
 ```ts
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { $ } from 'bun'
+import { describe, expect, test } from 'bun:test'
 import { getGitState } from '../src/git-state.ts'
+import type { GitRunner } from '../src/git-state.ts'
 
-let tempDir: string
-
-beforeAll(async () => {
-	tempDir = await mkdtemp(join(tmpdir(), 'cya-test-'))
-	// Init repo with a commit on main
-	await $`git init ${tempDir}`
-	await $`git -C ${tempDir} checkout -b main`
-	await Bun.write(join(tempDir, 'file.txt'), 'hello')
-	await $`git -C ${tempDir} add .`
-	await $`git -C ${tempDir} commit -m "initial"`
-	// Create feature branch with a change
-	await $`git -C ${tempDir} checkout -b feature-branch`
-	await $`mkdir -p ${join(tempDir, 'src')}`
-	await Bun.write(join(tempDir, 'src/index.ts'), 'console.log("hi")')
-	await $`git -C ${tempDir} add .`
-	await $`git -C ${tempDir} commit -m "add src"`
-})
-
-afterAll(async () => {
-	await rm(tempDir, { recursive: true })
-})
+function mockRunner(overrides: Partial<GitRunner> = {}): GitRunner {
+	return {
+		currentBranch: async () => 'feature-branch',
+		diffBase: async () => ['src/index.ts', 'src/utils.ts'],
+		diffStaged: async () => [],
+		diffUnstaged: async () => [],
+		untracked: async () => [],
+		...overrides,
+	}
+}
 
 describe('getGitState', () => {
-	test('detects current branch', async () => {
-		const state = await getGitState({ cwd: tempDir })
-		expect(state.branch).toBe('feature-branch')
+	test('detects current branch from runner', async () => {
+		const runner = mockRunner({ currentBranch: async () => 'my-branch' })
+		const state = await getGitState({ runner })
+		expect(state.branch).toBe('my-branch')
 	})
 
 	test('uses provided baseBranch', async () => {
 		const state = await getGitState({
-			baseBranch: 'main',
-			cwd: tempDir,
+			baseBranch: 'develop',
+			runner: mockRunner(),
 		})
-		expect(state.baseBranch).toBe('main')
+		expect(state.baseBranch).toBe('develop')
 	})
 
 	test('defaults baseBranch to main', async () => {
-		const state = await getGitState({ cwd: tempDir })
+		const state = await getGitState({ runner: mockRunner() })
 		expect(state.baseBranch).toBe('main')
 	})
 
-	test('detects changed files against base', async () => {
-		const state = await getGitState({
-			baseBranch: 'main',
-			cwd: tempDir,
-		})
-		expect(state.changedFiles).toContain('src/index.ts')
-	})
-
 	test('defaults event to pull_request', async () => {
-		const state = await getGitState({ cwd: tempDir })
+		const state = await getGitState({ runner: mockRunner() })
 		expect(state.event).toBe('pull_request')
 	})
 
 	test('uses provided event', async () => {
 		const state = await getGitState({
-			cwd: tempDir,
 			event: 'push',
+			runner: mockRunner(),
 		})
 		expect(state.event).toBe('push')
+	})
+
+	test('collects committed diff files', async () => {
+		const runner = mockRunner({
+			diffBase: async () => ['src/index.ts', 'lib/utils.ts'],
+		})
+		const state = await getGitState({ runner })
+		expect(state.changedFiles).toContain('src/index.ts')
+		expect(state.changedFiles).toContain('lib/utils.ts')
+	})
+
+	test('includes unstaged changes', async () => {
+		const runner = mockRunner({
+			diffBase: async () => ['src/index.ts'],
+			diffUnstaged: async () => ['src/dirty.ts'],
+		})
+		const state = await getGitState({ runner })
+		expect(state.changedFiles).toContain('src/dirty.ts')
+	})
+
+	test('includes staged changes', async () => {
+		const runner = mockRunner({
+			diffBase: async () => [],
+			diffStaged: async () => ['src/staged.ts'],
+		})
+		const state = await getGitState({ runner })
+		expect(state.changedFiles).toContain('src/staged.ts')
+	})
+
+	test('includes untracked files', async () => {
+		const runner = mockRunner({
+			diffBase: async () => [],
+			untracked: async () => ['newfile.ts'],
+		})
+		const state = await getGitState({ runner })
+		expect(state.changedFiles).toContain('newfile.ts')
+	})
+
+	test('deduplicates files across all sources', async () => {
+		const runner = mockRunner({
+			diffBase: async () => ['src/index.ts'],
+			diffStaged: async () => ['src/index.ts'],
+			diffUnstaged: async () => ['src/index.ts'],
+			untracked: async () => [],
+		})
+		const state = await getGitState({ runner })
+		const count = state.changedFiles.filter(
+			f => f === 'src/index.ts'
+		).length
+		expect(count).toBe(1)
+	})
+
+	test('passes baseBranch to diffBase runner', async () => {
+		let receivedBase = ''
+		const runner = mockRunner({
+			diffBase: async (base) => {
+				receivedBase = base
+				return []
+			},
+		})
+		await getGitState({ baseBranch: 'develop', runner })
+		expect(receivedBase).toBe('develop')
 	})
 })
 ```
@@ -1091,68 +1132,71 @@ git commit -m "Add git-state layer tests (red)"
 **Files:**
 - Create: `src/git-state.ts`
 
-- [ ] **Step 1: Implement getGitState**
+- [ ] **Step 1: Implement getGitState with GitRunner interface**
 
 ```ts
 import { $ } from 'bun'
 import type { GitEvent, GitState } from './types.ts'
 
+export type GitRunner = {
+	currentBranch: () => Promise<string>
+	diffBase: (baseBranch: string) => Promise<string[]>
+	diffStaged: () => Promise<string[]>
+	diffUnstaged: () => Promise<string[]>
+	untracked: () => Promise<string[]>
+}
+
+function splitLines(output: string): string[] {
+	return output
+		.trim()
+		.split('\n')
+		.filter(f => f.length > 0)
+}
+
+export function createBunGitRunner(cwd: string): GitRunner {
+	return {
+		currentBranch: async () =>
+			(await $`git -C ${cwd} rev-parse --abbrev-ref HEAD`.text()).trim(),
+		diffBase: async (baseBranch) =>
+			splitLines(
+				await $`git -C ${cwd} diff --name-only ${baseBranch}...HEAD`
+					.text()
+					.catch(() => '')
+			),
+		diffStaged: async () =>
+			splitLines(await $`git -C ${cwd} diff --name-only --cached`.text()),
+		diffUnstaged: async () =>
+			splitLines(await $`git -C ${cwd} diff --name-only`.text()),
+		untracked: async () =>
+			splitLines(
+				await $`git -C ${cwd} ls-files --others --exclude-standard`.text()
+			),
+	}
+}
+
 type GitStateOptions = {
 	baseBranch?: string
 	cwd?: string
 	event?: GitEvent
+	runner?: GitRunner
 }
 
 export async function getGitState(
 	options: GitStateOptions = {}
 ): Promise<GitState> {
-	const cwd = options.cwd ?? process.cwd()
-
-	const branch = (
-		await $`git -C ${cwd} rev-parse --abbrev-ref HEAD`.text()
-	).trim()
-
+	const runner =
+		options.runner ?? createBunGitRunner(options.cwd ?? process.cwd())
 	const baseBranch = options.baseBranch ?? 'main'
 	const event = options.event ?? 'pull_request'
 
-	// Files changed between base and HEAD
-	const diffOutput = await $`git -C ${cwd} diff --name-only ${baseBranch}...HEAD`
-		.text()
-		.catch(() => '')
-	const committedFiles = diffOutput
-		.trim()
-		.split('\n')
-		.filter((f) => f.length > 0)
-
-	// Unstaged changes
-	const unstaged = await $`git -C ${cwd} diff --name-only`.text()
-	const unstagedFiles = unstaged
-		.trim()
-		.split('\n')
-		.filter(f => f.length > 0)
-
-	// Staged changes
-	const staged = await $`git -C ${cwd} diff --name-only --cached`.text()
-	const stagedFiles = staged
-		.trim()
-		.split('\n')
-		.filter(f => f.length > 0)
-
-	// Untracked files
-	const untrackedOutput =
-		await $`git -C ${cwd} ls-files --others --exclude-standard`.text()
-	const untrackedFiles = untrackedOutput
-		.trim()
-		.split('\n')
-		.filter((f) => f.length > 0)
+	const branch = await runner.currentBranch()
+	const committed = await runner.diffBase(baseBranch)
+	const unstaged = await runner.diffUnstaged()
+	const staged = await runner.diffStaged()
+	const untracked = await runner.untracked()
 
 	const changedFiles = [
-		...new Set([
-			...committedFiles,
-			...unstagedFiles,
-			...stagedFiles,
-			...untrackedFiles,
-		]),
+		...new Set([...committed, ...unstaged, ...staged, ...untracked]),
 	]
 
 	return {
@@ -1173,7 +1217,7 @@ Expected: PASS
 
 ```bash
 git add src/git-state.ts
-git commit -m "Implement git-state layer"
+git commit -m "Implement git-state layer with injectable GitRunner"
 ```
 
 ### Task 10: Write render tests
@@ -1435,11 +1479,7 @@ const main = defineCommand({
 		const workflowsDir = `${cwd}/.github/workflows`
 
 		const workflows = await parseWorkflowsFromDir(workflowsDir)
-		const gitState = await getGitState({
-			baseBranch: args.base,
-			cwd,
-			event,
-		})
+		const gitState = await getGitState({ baseBranch: args.base, cwd, event })
 		const result = evaluate(workflows, gitState)
 		console.log(renderResult(result))
 	},
