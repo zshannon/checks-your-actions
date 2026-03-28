@@ -37,6 +37,9 @@ function matchesPaths(changedFiles: string[], trigger: WorkflowTrigger): boolean
 		)
 	}
 	if (trigger.pathsIgnore) {
+		if (changedFiles.length === 0) {
+			return true
+		}
 		const allIgnored = changedFiles.every(file =>
 			trigger.pathsIgnore!.some(pattern =>
 				picomatch.isMatch(file, pattern, { dot: true })
@@ -54,6 +57,16 @@ function matchesTrigger(workflow: Workflow, state: GitState): boolean {
 	const trigger = state.event === 'push' ? workflow.on.push : workflow.on.pullRequest
 	if (!trigger) {
 		return false
+	}
+	// Skip tag-only push workflows (we don't evaluate tag triggers)
+	if (state.event === 'push') {
+		const hasTagFilter = trigger.tags || trigger.tagsIgnore
+		const hasBranchOrPathFilter =
+			trigger.branches || trigger.branchesIgnore || trigger.paths || trigger.pathsIgnore
+		if (hasTagFilter && !hasBranchOrPathFilter) {
+			console.warn(`Warning: ${workflow.fileName} has tag-only push trigger, skipping`)
+			return false
+		}
 	}
 	// For push: check head branch. For pull_request: check base branch.
 	const branchToCheck = state.event === 'push' ? state.branch : state.baseBranch
