@@ -118,8 +118,9 @@ describe('parseWorkflowFile', () => {
 describe('parseWorkflowsFromDir', () => {
 	test('parses all valid workflows from directory', async () => {
 		const workflows = await parseWorkflowsFromDir(FIXTURES)
-		expect(workflows.length).toBeGreaterThanOrEqual(5)
+		expect(workflows).toHaveLength(19)
 		expect(workflows.every(w => w.fileName !== 'invalid.yml')).toBe(true)
+		expect(workflows.every(w => w.fileName !== 'invalid-on.yml')).toBe(true)
 	})
 
 	test('returns empty array for nonexistent directory', async () => {
