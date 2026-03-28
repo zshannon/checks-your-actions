@@ -1,0 +1,13 @@
+name: Docs
+on:
+  push:
+    paths:
+      - "docs/**"
+      - "*.md"
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run build:docs
