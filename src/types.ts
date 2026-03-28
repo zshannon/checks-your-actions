@@ -19,19 +19,19 @@ export type Job = {
 	if?: string
 	name?: string
 	needs?: string[]
-	runsOn: string | string[]
+	runsOn: string | string[] | undefined
 	steps: Step[]
 }
 
 export type Workflow = {
 	fileName: string
+	jobs: Job[]
 	name?: string
 	on: {
 		push?: WorkflowTrigger
 		pullRequest?: WorkflowTrigger
 		workflowDispatch?: Record<string, unknown>
 	}
-	jobs: Job[]
 }
 
 export type GitEvent = 'push' | 'pull_request' | 'workflow_dispatch'

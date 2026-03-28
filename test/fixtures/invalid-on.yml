@@ -1,0 +1,8 @@
+name: Bad On
+on: 123
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm test

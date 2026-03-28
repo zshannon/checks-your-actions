@@ -91,6 +91,17 @@ describe('parseWorkflowFile', () => {
 		expect(workflow).not.toBeNull()
 		expect(workflow!.jobs[1]!.needs).toEqual(['build'])
 	})
+
+	test('parses .yaml extension files', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'basic-yaml-ext.yaml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.name).toBe('YAML Extension')
+	})
+
+	test('returns null for invalid on: value type', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'invalid-on.yml'))
+		expect(workflow).toBeNull()
+	})
 })
 
 describe('parseWorkflowsFromDir', () => {
