@@ -46,6 +46,7 @@ export type GitState = {
 
 export type MatchedJob = {
 	id: string
+	if?: string
 	name?: string
 	needs?: string[]
 	steps: Step[]

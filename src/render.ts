@@ -22,6 +22,10 @@ export function renderResult(result: EvaluationResult): string {
 				job.name && job.name !== job.id ? `${job.id} (${job.name}):` : `${job.id}:`
 			lines.push(`  ${colorize('cyan', jobLabel)}`)
 
+			if (job.if) {
+				lines.push(`    ${colorize('dim', `if: ${job.if}`)}`)
+			}
+
 			if (job.uses) {
 				lines.push(`    ${colorize('dim', `→ ${job.uses}`)}`)
 			} else {

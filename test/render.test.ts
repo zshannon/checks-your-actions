@@ -96,6 +96,30 @@ describe('renderResult', () => {
 		expect(output).toContain('Run Tests')
 	})
 
+	test('renders job-level if condition', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+			matchedWorkflows: [
+				{
+					fileName: 'release.yml',
+					jobs: [
+						{
+							id: 'publish',
+							if: "startsWith(github.ref, 'refs/tags/v')",
+							steps: [{ run: 'npm publish' }],
+						},
+					],
+					name: 'Release',
+				},
+			],
+		}
+		const output = renderResult(result)
+		expect(output).toContain("if: startsWith(github.ref, 'refs/tags/v')")
+	})
+
 	test('renders reusable workflow job with uses reference', () => {
 		const result: EvaluationResult = {
 			baseBranch: 'main',

@@ -87,6 +87,7 @@ export function evaluate(workflows: Workflow[], state: GitState): EvaluationResu
 		}
 		const jobs: MatchedJob[] = workflow.jobs.map(job => ({
 			id: job.id,
+			if: job.if,
 			name: job.name,
 			needs: job.needs,
 			steps: job.steps,
