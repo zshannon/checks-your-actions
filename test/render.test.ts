@@ -95,4 +95,32 @@ describe('renderResult', () => {
 		const output = renderResult(result)
 		expect(output).toContain('Run Tests')
 	})
+
+	test('renders multi-line run steps with proper indentation', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: [],
+			event: 'push',
+			matchedWorkflows: [
+				{
+					fileName: 'ci.yml',
+					jobs: [
+						{
+							id: 'test',
+							name: 'Test',
+							steps: [{ run: 'echo "hello"\necho "world"' }],
+						},
+					],
+					name: 'CI',
+				},
+			],
+		}
+		const output = renderResult(result)
+		const lines = output.split('\n')
+		const runLineIndex = lines.findIndex(l => l.includes('echo "hello"'))
+		expect(runLineIndex).toBeGreaterThan(-1)
+		expect(lines[runLineIndex + 1]).toContain('echo "world"')
+		expect(lines[runLineIndex + 1]!.startsWith('      ')).toBe(true)
+	})
 })
