@@ -53,6 +53,44 @@ describe('parseWorkflowFile', () => {
 		const workflow = await parseWorkflowFile(join(FIXTURES, 'invalid.yml'))
 		expect(workflow).toBeNull()
 	})
+
+	test('parses shorthand string on: push', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'shorthand-string.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.name).toBe('Simple CI')
+		expect(workflow!.on.push).toEqual({})
+		expect(workflow!.on.pullRequest).toBeUndefined()
+		expect(workflow!.jobs).toHaveLength(1)
+		expect(workflow!.jobs[0]!.id).toBe('test')
+		expect(workflow!.jobs[0]!.steps).toHaveLength(2)
+	})
+
+	test('parses shorthand array on: [push, pull_request]', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'shorthand-array.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.on.push).toEqual({})
+		expect(workflow!.on.pullRequest).toEqual({})
+		expect(workflow!.jobs).toHaveLength(1)
+	})
+
+	test('parses tags in push trigger', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'tags-only.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.on.push?.tags).toEqual(['v*'])
+	})
+
+	test('parses branches-ignore and paths-ignore', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'branches-ignore.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.on.push?.branchesIgnore).toEqual(['dependabot/**'])
+		expect(workflow!.on.push?.pathsIgnore).toEqual(['docs/**'])
+	})
+
+	test('normalizes needs string to array', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'needs-string.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.jobs[1]!.needs).toEqual(['build'])
+	})
 })
 
 describe('parseWorkflowsFromDir', () => {
@@ -60,5 +98,10 @@ describe('parseWorkflowsFromDir', () => {
 		const workflows = await parseWorkflowsFromDir(FIXTURES)
 		expect(workflows.length).toBeGreaterThanOrEqual(5)
 		expect(workflows.every(w => w.fileName !== 'invalid.yml')).toBe(true)
+	})
+
+	test('returns empty array for nonexistent directory', async () => {
+		const workflows = await parseWorkflowsFromDir('/tmp/nonexistent-dir-cya-test')
+		expect(workflows).toEqual([])
 	})
 })
