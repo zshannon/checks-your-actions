@@ -36,11 +36,18 @@ function parseTrigger(raw: unknown): WorkflowTrigger {
 	return trigger
 }
 
+function toOptionalString(value: unknown): string | undefined {
+	if (value == null) {
+		return undefined
+	}
+	return String(value)
+}
+
 function parseStep(raw: Record<string, unknown>): Step {
 	return {
-		name: raw['name'] as string | undefined,
-		run: raw['run'] as string | undefined,
-		uses: raw['uses'] as string | undefined,
+		name: toOptionalString(raw['name']),
+		run: toOptionalString(raw['run']),
+		uses: toOptionalString(raw['uses']),
 	}
 }
 

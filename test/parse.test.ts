@@ -102,6 +102,17 @@ describe('parseWorkflowFile', () => {
 		const workflow = await parseWorkflowFile(join(FIXTURES, 'invalid-on.yml'))
 		expect(workflow).toBeNull()
 	})
+
+	test('coerces non-string run values to strings', async () => {
+		const workflow = await parseWorkflowFile(join(FIXTURES, 'numeric-run.yml'))
+		expect(workflow).not.toBeNull()
+		expect(workflow!.jobs[0]!.steps[0]!.run).toBe('123')
+	})
+
+	test('returns null for non-existent file', async () => {
+		const workflow = await parseWorkflowFile('/tmp/nonexistent-file-cya.yml')
+		expect(workflow).toBeNull()
+	})
 })
 
 describe('parseWorkflowsFromDir', () => {
