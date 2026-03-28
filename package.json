@@ -1,7 +1,12 @@
 {
   "name": "checks-your-actions",
-  "version": "0.0.2",
+  "version": "0.0.3",
+  "description": "Know what CI will do before you push.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zshannon/checks-your-actions"
+  },
   "type": "module",
   "files": [
     "dist/"
