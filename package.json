@@ -1,23 +1,31 @@
 {
   "name": "checks-your-actions",
+  "version": "0.0.1",
   "type": "module",
   "bin": {
     "cya": "src/cli.ts"
   },
   "scripts": {
     "bump": "bumpp",
-    "format": "oxfmt --write src/",
-    "lint": "oxfmt --check src/ && oxlint src/",
+    "format": "oxfmt --write src/ test/",
+    "lint": "oxfmt --check src/ test/ && oxlint src/ test/",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/picomatch": "^4.0.2",
     "bumpp": "11.0.1",
     "oxfmt": "0.42.0",
     "oxlint": "1.57.0"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "citty": "^0.2.1",
+    "consola": "^3.4.2",
+    "picomatch": "^4.0.4",
+    "yaml": "^2.8.3"
   }
 }
