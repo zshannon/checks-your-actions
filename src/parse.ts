@@ -24,6 +24,12 @@ function parseTrigger(raw: unknown): WorkflowTrigger {
 	if (Array.isArray(obj['paths-ignore'])) {
 		trigger.pathsIgnore = obj['paths-ignore']
 	}
+	if (Array.isArray(obj['tags'])) {
+		trigger.tags = obj['tags']
+	}
+	if (Array.isArray(obj['tags-ignore'])) {
+		trigger.tagsIgnore = obj['tags-ignore']
+	}
 	if (Array.isArray(obj['types'])) {
 		trigger.types = obj['types']
 	}
@@ -53,6 +59,19 @@ function parseJob(id: string, raw: Record<string, unknown>): Job {
 	}
 }
 
+function normalizeOn(raw: unknown): Record<string, unknown> | null {
+	if (typeof raw === 'string') {
+		return { [raw]: {} }
+	}
+	if (Array.isArray(raw)) {
+		return Object.fromEntries(raw.map(event => [String(event), {}]))
+	}
+	if (raw && typeof raw === 'object') {
+		return raw as Record<string, unknown>
+	}
+	return null
+}
+
 export async function parseWorkflowFile(filePath: string): Promise<Workflow | null> {
 	try {
 		const content = await Bun.file(filePath).text()
@@ -61,7 +80,7 @@ export async function parseWorkflowFile(filePath: string): Promise<Workflow | nu
 			return null
 		}
 
-		const on = doc['on'] as Record<string, unknown> | undefined
+		const on = normalizeOn(doc['on'])
 		if (!on) {
 			return null
 		}
@@ -86,7 +105,16 @@ export async function parseWorkflowFile(filePath: string): Promise<Workflow | nu
 }
 
 export async function parseWorkflowsFromDir(dirPath: string): Promise<Workflow[]> {
-	const entries = await readdir(dirPath)
+	let entries: string[]
+	try {
+		entries = await readdir(dirPath)
+	} catch (error: unknown) {
+		const code = (error as { code?: string }).code
+		if (code === 'ENOENT' || code === 'ENOTDIR') {
+			return []
+		}
+		throw error
+	}
 	const yamlFiles = entries.filter(f => f.endsWith('.yml') || f.endsWith('.yaml'))
 	const results = await Promise.all(
 		yamlFiles.map(f => parseWorkflowFile(join(dirPath, f)))
