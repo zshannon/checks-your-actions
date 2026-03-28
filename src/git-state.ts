@@ -20,12 +20,16 @@ export function createBunGitRunner(cwd: string): GitRunner {
 	return {
 		currentBranch: async () =>
 			(await $`git -C ${cwd} rev-parse --abbrev-ref HEAD`.text()).trim(),
-		diffBase: async baseBranch =>
-			splitLines(
-				await $`git -C ${cwd} diff --name-only ${baseBranch}...HEAD`
-					.text()
-					.catch(() => '')
-			),
+		diffBase: async baseBranch => {
+			// Check if baseBranch exists as a local ref; fall back to origin/<baseBranch>
+			const refExists = await $`git -C ${cwd} rev-parse --verify ${baseBranch}`
+				.quiet()
+				.nothrow()
+			const ref = refExists.exitCode === 0 ? baseBranch : `origin/${baseBranch}`
+			return splitLines(
+				await $`git -C ${cwd} diff --name-only ${ref}...HEAD`.text().catch(() => '')
+			)
+		},
 		diffStaged: async () =>
 			splitLines(await $`git -C ${cwd} diff --name-only --cached`.text()),
 		diffUnstaged: async () => splitLines(await $`git -C ${cwd} diff --name-only`.text()),
