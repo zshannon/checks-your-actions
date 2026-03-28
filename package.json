@@ -3,13 +3,15 @@
   "version": "0.0.1",
   "type": "module",
   "files": [
-    "src/"
+    "dist/"
   ],
   "bin": {
-    "cya": "src/cli.ts"
+    "cya": "dist/cli.js"
   },
   "scripts": {
+    "build": "bun build src/cli.ts --outdir dist --target bun",
     "bump": "bumpp",
+    "prepublishOnly": "bun run build",
     "format": "oxfmt --write src/ test/",
     "lint": "oxfmt --check src/ test/ && oxlint src/ test/",
     "test": "bun test",
