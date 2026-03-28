@@ -270,4 +270,117 @@ describe('evaluate', () => {
 		expect(result.changedFiles).toEqual(['src/index.ts'])
 		expect(result.event).toBe('push')
 	})
+
+	test('skips tag-only push workflow', () => {
+		const tagOnlyWorkflow: Workflow = {
+			fileName: 'release.yml',
+			jobs: [{ id: 'publish', runsOn: 'ubuntu-latest', steps: [{ run: 'npm publish' }] }],
+			name: 'Release',
+			on: { push: { tags: ['v*'] } },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const result = evaluate([tagOnlyWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(0)
+	})
+
+	test('skips tags-ignore-only push workflow', () => {
+		const tagsIgnoreWorkflow: Workflow = {
+			fileName: 'release.yml',
+			jobs: [{ id: 'publish', runsOn: 'ubuntu-latest', steps: [{ run: 'npm publish' }] }],
+			name: 'Release',
+			on: { push: { tagsIgnore: ['beta*'] } },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const result = evaluate([tagsIgnoreWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(0)
+	})
+
+	test('workflow with tags AND branches uses branch filter', () => {
+		const mixedWorkflow: Workflow = {
+			fileName: 'mixed.yml',
+			jobs: [{ id: 'test', runsOn: 'ubuntu-latest', steps: [{ run: 'npm test' }] }],
+			name: 'Mixed',
+			on: { push: { branches: ['main'], tags: ['v*'] } },
+		}
+		const stateOnMain: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const stateOnFeature: GitState = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		expect(evaluate([mixedWorkflow], stateOnMain).matchedWorkflows).toHaveLength(1)
+		expect(evaluate([mixedWorkflow], stateOnFeature).matchedWorkflows).toHaveLength(0)
+	})
+
+	test('empty changedFiles with pathsIgnore runs workflow', () => {
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: [],
+			event: 'push',
+		}
+		const result = evaluate([pathsIgnoreWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(1)
+	})
+
+	test('empty changedFiles with paths skips workflow', () => {
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: [],
+			event: 'push',
+		}
+		const result = evaluate([pathsWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(0)
+	})
+
+	test('branches and branches-ignore mutual exclusivity skips workflow', () => {
+		const mutualExclusiveWorkflow: Workflow = {
+			fileName: 'bad.yml',
+			jobs: [{ id: 'test', runsOn: 'ubuntu-latest', steps: [{ run: 'npm test' }] }],
+			name: 'Bad',
+			on: { push: { branches: ['main'], branchesIgnore: ['develop'] } },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const result = evaluate([mutualExclusiveWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(0)
+	})
+
+	test('paths and paths-ignore mutual exclusivity skips workflow', () => {
+		const mutualExclusiveWorkflow: Workflow = {
+			fileName: 'bad.yml',
+			jobs: [{ id: 'test', runsOn: 'ubuntu-latest', steps: [{ run: 'npm test' }] }],
+			name: 'Bad',
+			on: { push: { paths: ['src/**'], pathsIgnore: ['docs/**'] } },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const result = evaluate([mutualExclusiveWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(0)
+	})
 })
