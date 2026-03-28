@@ -1,0 +1,23 @@
+{
+  "name": "checks-your-actions",
+  "type": "module",
+  "bin": {
+    "cya": "src/cli.ts"
+  },
+  "scripts": {
+    "bump": "bumpp",
+    "format": "oxfmt --write src/",
+    "lint": "oxfmt --check src/ && oxlint src/",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bumpp": "11.0.1",
+    "oxfmt": "0.42.0",
+    "oxlint": "1.57.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
