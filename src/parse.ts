@@ -37,7 +37,7 @@ function parseTrigger(raw: unknown): WorkflowTrigger {
 }
 
 function toOptionalString(value: unknown): string | undefined {
-	if (value == null) {
+	if (value === null || value === undefined) {
 		return undefined
 	}
 	return String(value)
