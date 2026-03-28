@@ -3,7 +3,7 @@
 	"arrowParens": "avoid",
 	"bracketSameLine": false,
 	"bracketSpacing": true,
-	"ignorePatterns": [],
+	"ignorePatterns": ["test/fixtures/**"],
 	"printWidth": 90,
 	"semi": false,
 	"singleQuote": true,
