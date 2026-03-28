@@ -3,6 +3,8 @@ export type WorkflowTrigger = {
 	branchesIgnore?: string[]
 	paths?: string[]
 	pathsIgnore?: string[]
+	tags?: string[]
+	tagsIgnore?: string[]
 	types?: string[]
 }
 
