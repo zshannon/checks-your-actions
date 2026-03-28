@@ -63,6 +63,7 @@ function parseJob(id: string, raw: Record<string, unknown>): Job {
 		needs: Array.isArray(needs) ? needs : typeof needs === 'string' ? [needs] : undefined,
 		runsOn: raw['runs-on'] as string | string[],
 		steps,
+		uses: toOptionalString(raw['uses']),
 	}
 }
 

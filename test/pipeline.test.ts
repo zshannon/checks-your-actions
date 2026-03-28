@@ -141,7 +141,9 @@ describe('reusable-caller.yml', () => {
 		// The parser should still capture the jobs
 		expect(workflow!.jobs).toHaveLength(2)
 		expect(workflow!.jobs[0]!.id).toBe('lint')
+		expect(workflow!.jobs[0]!.uses).toBe('./.github/workflows/reusable-lint.yml')
 		expect(workflow!.jobs[1]!.id).toBe('test')
+		expect(workflow!.jobs[1]!.uses).toBe('./.github/workflows/reusable-test.yml')
 		expect(workflow!.jobs[1]!.needs).toEqual(['lint'])
 	})
 })

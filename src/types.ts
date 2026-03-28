@@ -21,6 +21,7 @@ export type Job = {
 	needs?: string[]
 	runsOn: string | string[] | undefined
 	steps: Step[]
+	uses?: string
 }
 
 export type Workflow = {
@@ -48,6 +49,7 @@ export type MatchedJob = {
 	name?: string
 	needs?: string[]
 	steps: Step[]
+	uses?: string
 }
 
 export type MatchedWorkflow = {

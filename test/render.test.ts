@@ -96,6 +96,30 @@ describe('renderResult', () => {
 		expect(output).toContain('Run Tests')
 	})
 
+	test('renders reusable workflow job with uses reference', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: [],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'build.yml',
+					jobs: [
+						{
+							id: 'lint',
+							steps: [],
+							uses: './.github/workflows/reusable-lint.yml',
+						},
+					],
+					name: 'Build',
+				},
+			],
+		}
+		const output = renderResult(result)
+		expect(output).toContain('reusable-lint.yml')
+	})
+
 	test('renders multi-line run steps with proper indentation', () => {
 		const result: EvaluationResult = {
 			baseBranch: 'main',

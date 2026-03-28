@@ -90,6 +90,7 @@ export function evaluate(workflows: Workflow[], state: GitState): EvaluationResu
 			name: job.name,
 			needs: job.needs,
 			steps: job.steps,
+			uses: job.uses,
 		}))
 		matchedWorkflows.push({ fileName: workflow.fileName, jobs, name: workflow.name })
 	}

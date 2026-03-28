@@ -22,17 +22,21 @@ export function renderResult(result: EvaluationResult): string {
 				job.name && job.name !== job.id ? `${job.id} (${job.name}):` : `${job.id}:`
 			lines.push(`  ${colorize('cyan', jobLabel)}`)
 
-			for (const step of job.steps) {
-				if (step.run) {
-					const runLines = step.run.split('\n').filter(l => l.trim().length > 0)
-					if (runLines.length > 0) {
-						lines.push(`    - ${runLines[0]}`)
-						for (const continuation of runLines.slice(1)) {
-							lines.push(`      ${continuation}`)
+			if (job.uses) {
+				lines.push(`    ${colorize('dim', `→ ${job.uses}`)}`)
+			} else {
+				for (const step of job.steps) {
+					if (step.run) {
+						const runLines = step.run.split('\n').filter(l => l.trim().length > 0)
+						if (runLines.length > 0) {
+							lines.push(`    - ${runLines[0]}`)
+							for (const continuation of runLines.slice(1)) {
+								lines.push(`      ${continuation}`)
+							}
 						}
+					} else if (step.uses) {
+						lines.push(`    - ${colorize('dim', step.uses)}`)
 					}
-				} else if (step.uses) {
-					lines.push(`    - ${colorize('dim', step.uses)}`)
 				}
 			}
 		}
