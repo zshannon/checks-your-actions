@@ -58,8 +58,8 @@ function parseJob(id: string, raw: Record<string, unknown>): Job {
 	const needs = raw['needs']
 	return {
 		id,
-		if: raw['if'] as string | undefined,
-		name: raw['name'] as string | undefined,
+		if: toOptionalString(raw['if']),
+		name: toOptionalString(raw['name']),
 		needs: Array.isArray(needs) ? needs : typeof needs === 'string' ? [needs] : undefined,
 		runsOn: raw['runs-on'] as string | string[],
 		steps,
@@ -99,7 +99,7 @@ export async function parseWorkflowFile(filePath: string): Promise<Workflow | nu
 		return {
 			fileName: basename(filePath),
 			jobs,
-			name: doc['name'] as string | undefined,
+			name: toOptionalString(doc['name']),
 			on: {
 				pullRequest: 'pull_request' in on ? parseTrigger(on['pull_request']) : undefined,
 				push: 'push' in on ? parseTrigger(on['push']) : undefined,
