@@ -27,12 +27,28 @@ const main = defineCommand({
 		},
 	},
 	async run({ args }) {
-		const event = args.event as 'push' | 'pull_request' | 'workflow_dispatch'
+		const validEvents = ['pull_request', 'push', 'workflow_dispatch'] as const
+		type ValidEvent = (typeof validEvents)[number]
+		if (!validEvents.includes(args.event as ValidEvent)) {
+			console.error(
+				`Invalid event type: "${args.event}". Must be one of: ${validEvents.join(', ')}`
+			)
+			process.exit(1)
+		}
+		const event = args.event as ValidEvent
 		const cwd = process.cwd()
 		const workflowsDir = `${cwd}/.github/workflows`
 
 		const workflows = await parseWorkflowsFromDir(workflowsDir)
-		const gitState = await getGitState({ baseBranch: args.base, cwd, event })
+		if (workflows.length === 0) {
+			console.log('No workflow files found in .github/workflows/')
+			return
+		}
+		const gitState = await getGitState({
+			baseBranch: args.base,
+			cwd,
+			event,
+		})
 		const result = evaluate(workflows, gitState)
 		console.log(renderResult(result))
 	},

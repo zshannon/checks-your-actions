@@ -17,4 +17,10 @@ describe('cya integration', () => {
 		expect(result).toContain('--base')
 		expect(result).toContain('--event')
 	})
+
+	test('rejects invalid event type', async () => {
+		const proc = await $`bun run src/cli.ts --event foobar`.nothrow().quiet()
+		expect(proc.exitCode).not.toBe(0)
+		expect(proc.stderr.toString()).toContain('Invalid event type')
+	})
 })
