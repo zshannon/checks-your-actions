@@ -171,4 +171,30 @@ describe('renderResult', () => {
 		expect(lines[runLineIndex + 1]).toContain('echo "world"')
 		expect(lines[runLineIndex + 1]!.startsWith('      ')).toBe(true)
 	})
+
+	test('renders multiple matched workflows', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+			matchedWorkflows: [
+				{
+					fileName: 'ci.yml',
+					jobs: [{ id: 'test', steps: [{ run: 'npm test' }] }],
+					name: 'CI',
+				},
+				{
+					fileName: 'deploy.yml',
+					jobs: [{ id: 'deploy', steps: [{ run: 'npm run deploy' }] }],
+					name: 'Deploy',
+				},
+			],
+		}
+		const output = renderResult(result)
+		expect(output).toContain('ci.yml')
+		expect(output).toContain('deploy.yml')
+		expect(output).toContain('npm test')
+		expect(output).toContain('npm run deploy')
+	})
 })

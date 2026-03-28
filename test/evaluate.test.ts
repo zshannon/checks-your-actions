@@ -367,6 +367,40 @@ describe('evaluate', () => {
 		expect(result.matchedWorkflows).toHaveLength(0)
 	})
 
+	test('matches workflow with both push and workflow_dispatch on push event', () => {
+		const dualTriggerWorkflow: Workflow = {
+			fileName: 'dual.yml',
+			jobs: [{ id: 'test', runsOn: 'ubuntu-latest', steps: [{ run: 'npm test' }] }],
+			name: 'Dual',
+			on: { push: { branches: ['main'] }, workflowDispatch: {} },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+		}
+		const result = evaluate([dualTriggerWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(1)
+	})
+
+	test('matches workflow with both push and workflow_dispatch on dispatch event', () => {
+		const dualTriggerWorkflow: Workflow = {
+			fileName: 'dual.yml',
+			jobs: [{ id: 'test', runsOn: 'ubuntu-latest', steps: [{ run: 'npm test' }] }],
+			name: 'Dual',
+			on: { push: { branches: ['main'] }, workflowDispatch: {} },
+		}
+		const state: GitState = {
+			baseBranch: 'main',
+			branch: 'main',
+			changedFiles: [],
+			event: 'workflow_dispatch',
+		}
+		const result = evaluate([dualTriggerWorkflow], state)
+		expect(result.matchedWorkflows).toHaveLength(1)
+	})
+
 	test('paths and paths-ignore mutual exclusivity skips workflow', () => {
 		const mutualExclusiveWorkflow: Workflow = {
 			fileName: 'bad.yml',

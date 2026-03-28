@@ -27,4 +27,9 @@ describe('cya integration', () => {
 		expect(proc.exitCode).not.toBe(0)
 		expect(proc.stderr.toString()).toContain('Invalid event type')
 	})
+
+	test('--version shows version', async () => {
+		const result = await $`bun run src/cli.ts --version`.text()
+		expect(result.trim()).toMatch(/\d+\.\d+\.\d+/)
+	})
 })

@@ -71,6 +71,7 @@ describe('complex-ci.yml', () => {
 			changedFiles: ['src/index.ts'],
 			event: 'push',
 		})
+		expect(result.matchedWorkflows).toHaveLength(1)
 		const jobs = result.matchedWorkflows[0]!.jobs
 		const testJob = jobs.find(j => j.id === 'test')
 		const e2eJob = jobs.find(j => j.id === 'e2e')
