@@ -1,0 +1,13 @@
+name: Build Pipeline
+on:
+  pull_request:
+
+jobs:
+  lint:
+    uses: ./.github/workflows/reusable-lint.yml
+    with:
+      node-version: '20'
+  test:
+    needs: lint
+    uses: ./.github/workflows/reusable-test.yml
+    secrets: inherit

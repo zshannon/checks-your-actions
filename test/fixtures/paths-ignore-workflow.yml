@@ -1,0 +1,19 @@
+name: Test
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.github/*.md'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm test

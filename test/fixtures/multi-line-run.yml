@@ -1,0 +1,21 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and deploy
+        run: |
+          npm ci
+          npm run build
+          npm run deploy -- --production
+      - name: Notify
+        run: |
+          curl -X POST https://api.example.com/notify \
+            -H "Authorization: Bearer ${{ secrets.TOKEN }}" \
+            -d '{"status": "deployed"}'
