@@ -24,7 +24,13 @@ export function renderResult(result: EvaluationResult): string {
 
 			for (const step of job.steps) {
 				if (step.run) {
-					lines.push(`    - ${step.run}`)
+					const runLines = step.run.split('\n').filter(l => l.trim().length > 0)
+					if (runLines.length > 0) {
+						lines.push(`    - ${runLines[0]}`)
+						for (const continuation of runLines.slice(1)) {
+							lines.push(`      ${continuation}`)
+						}
+					}
 				} else if (step.uses) {
 					lines.push(`    - ${colorize('dim', step.uses)}`)
 				}
