@@ -219,8 +219,8 @@ describe('evaluate', () => {
 		}
 		const result = evaluate([multiJobWorkflow], state)
 		expect(result.matchedWorkflows).toHaveLength(1)
-		expect(result.matchedWorkflows[0].jobs).toHaveLength(2)
-		expect(result.matchedWorkflows[0].jobs[1].needs).toEqual(['build'])
+		expect(result.matchedWorkflows[0]!.jobs).toHaveLength(2)
+		expect(result.matchedWorkflows[0]!.jobs[1]!.needs).toEqual(['build'])
 	})
 
 	test('matches branches-ignore when branch is not ignored', () => {
