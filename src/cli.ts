@@ -15,6 +15,11 @@ const main = defineCommand({
 		version: pkg.version,
 	},
 	args: {
+		all: {
+			default: false,
+			description: 'Show skipped and bookkeeping jobs',
+			type: 'boolean',
+		},
 		base: {
 			default: 'main',
 			description: 'Base branch for comparison',
@@ -48,9 +53,14 @@ const main = defineCommand({
 			baseBranch: args.base,
 			cwd,
 			event,
+			includeTurboAffectedPackages: workflows.some(workflow =>
+				workflow.jobs.some(job =>
+					job.steps.some(step => step.run?.includes('turbo@2 query affected'))
+				)
+			),
 		})
 		const result = evaluate(workflows, gitState)
-		console.log(renderResult(result))
+		console.log(renderResult(result, { all: args.all }))
 	},
 })
 

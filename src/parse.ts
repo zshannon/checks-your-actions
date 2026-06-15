@@ -45,10 +45,28 @@ function toOptionalString(value: unknown): string | undefined {
 
 function parseStep(raw: Record<string, unknown>): Step {
 	return {
+		id: toOptionalString(raw['id']),
+		if: toOptionalString(raw['if']),
 		name: toOptionalString(raw['name']),
 		run: toOptionalString(raw['run']),
 		uses: toOptionalString(raw['uses']),
+		with:
+			raw['with'] && typeof raw['with'] === 'object' && !Array.isArray(raw['with'])
+				? (raw['with'] as Record<string, unknown>)
+				: undefined,
 	}
+}
+
+function parseOutputs(raw: unknown): Record<string, string> | undefined {
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+		return undefined
+	}
+	return Object.fromEntries(
+		Object.entries(raw as Record<string, unknown>).map(([key, value]) => [
+			key,
+			String(value),
+		])
+	)
 }
 
 function parseJob(id: string, raw: Record<string, unknown>): Job {
@@ -61,6 +79,7 @@ function parseJob(id: string, raw: Record<string, unknown>): Job {
 		if: toOptionalString(raw['if']),
 		name: toOptionalString(raw['name']),
 		needs: Array.isArray(needs) ? needs : typeof needs === 'string' ? [needs] : undefined,
+		outputs: parseOutputs(raw['outputs']),
 		runsOn: raw['runs-on'] as string | string[],
 		steps,
 		uses: toOptionalString(raw['uses']),

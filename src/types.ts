@@ -9,9 +9,12 @@ export type WorkflowTrigger = {
 }
 
 export type Step = {
+	id?: string
+	if?: string
 	name?: string
 	run?: string
 	uses?: string
+	with?: Record<string, unknown>
 }
 
 export type Job = {
@@ -19,6 +22,7 @@ export type Job = {
 	if?: string
 	name?: string
 	needs?: string[]
+	outputs?: Record<string, string>
 	runsOn: string | string[] | undefined
 	steps: Step[]
 	uses?: string
@@ -39,9 +43,25 @@ export type GitEvent = 'push' | 'pull_request' | 'workflow_dispatch'
 
 export type GitState = {
 	baseBranch: string
+	baseRef?: string
 	branch: string
 	changedFiles: string[]
 	event: GitEvent
+	headRef?: string
+	turboAffectedPackages?: TurboAffectedPackage[]
+}
+
+export type TurboAffectedPackage = {
+	name: string
+	path: string
+}
+
+export type JobPredictionStatus = 'unknown' | 'will_run' | 'will_skip'
+
+export type JobPrediction = {
+	outputs?: Record<string, string>
+	reason?: string
+	status: JobPredictionStatus
 }
 
 export type MatchedJob = {
@@ -49,6 +69,8 @@ export type MatchedJob = {
 	if?: string
 	name?: string
 	needs?: string[]
+	outputs?: Record<string, string>
+	prediction?: JobPrediction
 	steps: Step[]
 	uses?: string
 }

@@ -1,0 +1,55 @@
+name: iOS Build on Changes
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'swift/**'
+      - 'apps/apple/**'
+      - 'yarn.lock'
+      - '.github/actions/cache-swift-spm/**'
+      - '.github/actions/last-successful-workflow-base/**'
+      - '.github/workflows/ios-*.yml'
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ inputs.force_run == true || github.event_name == 'workflow_dispatch' || steps.affected.outputs.should_run == 'true' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check if affected
+        id: affected
+        run: |
+          BASE_SHA="${{ steps.diff-base.outputs.base-sha }}"
+          HEAD_SHA="${{ steps.diff-base.outputs.head-sha }}"
+          OUTPUT=$(npx turbo@2 query affected --packages --base "$BASE_SHA" --head "$HEAD_SHA" 2>/dev/null)
+          COUNT=$(echo "$OUTPUT" | jq '[.data.affectedPackages.items[] | select(.name == "apple" or (.path | startswith("swift/")))] | length')
+          CONFIG_COUNT=$(git diff --name-only "$BASE_SHA".."$HEAD_SHA" -- \
+            package.json \
+            turbo.json \
+            .github/actions/cache-swift-spm \
+            .github/actions/last-successful-workflow-base \
+            .github/workflows/ios-archive.yml \
+            .github/workflows/ios-build-debug.yml \
+            .github/workflows/ios-build-on-change.yml \
+            .github/workflows/ios-release.yml \
+            | wc -l | tr -d ' ')
+          TOTAL=$((COUNT + CONFIG_COUNT))
+          echo "should_run=$( [ "$TOTAL" -gt 0 ] && echo true || echo false )" >> $GITHUB_OUTPUT
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.should_run == 'true'
+    uses: ./.github/workflows/ios-build-debug.yml
+
+  result:
+    if: always()
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ]; then
+            exit 1
+          fi

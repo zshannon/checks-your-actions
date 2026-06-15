@@ -2,12 +2,17 @@ import { describe, expect, test } from 'bun:test'
 import { $ } from 'bun'
 
 describe('cya integration', () => {
-	test('reports publish workflow on push to main', async () => {
+	test('reports push workflow according to the current branch', async () => {
+		const branch = (await $`git rev-parse --abbrev-ref HEAD`.text()).trim()
 		const result = await $`bun run src/cli.ts --base main --event push`.text()
-		expect(result).toContain('publish.yml')
-		expect(result).toContain('Publish to npm')
-		expect(result).toContain('bun run lint')
-		expect(result).toContain('bun run test')
+		if (branch === 'main') {
+			expect(result).toContain('publish.yml')
+			expect(result).toContain('Publish to npm')
+			expect(result).toContain('bun run lint')
+			expect(result).toContain('bun run test')
+		} else {
+			expect(result).toContain('No workflows would be triggered')
+		}
 	})
 
 	test('shows no-match for event with no matching triggers', async () => {

@@ -23,7 +23,7 @@ describe('renderResult', () => {
 		expect(output).toContain('ci.yml')
 		expect(output).toContain('CI')
 		expect(output).toContain('test')
-		expect(output).toContain('actions/checkout@v4')
+		expect(output).not.toContain('actions/checkout@v4')
 		expect(output).toContain('npm test')
 	})
 
@@ -196,5 +196,197 @@ describe('renderResult', () => {
 		expect(output).toContain('deploy.yml')
 		expect(output).toContain('npm test')
 		expect(output).toContain('npm run deploy')
+	})
+
+	test('summarizes skipped workflows without rendering skipped jobs by default', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['yarn.lock'],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'ios.yml',
+					jobs: [
+						{
+							id: 'build',
+							if: "needs.changes.outputs.should_run == 'true'",
+							prediction: {
+								reason: 'if condition evaluated false',
+								status: 'will_skip',
+							},
+							steps: [],
+							uses: './.github/workflows/ios-build-debug.yml',
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result)
+		expect(output).toContain('No actionable jobs')
+		expect(output).toContain('Skipped by guards')
+		expect(output).toContain('if condition evaluated false')
+		expect(output).not.toContain('[skip]')
+		expect(output).not.toContain('ios-build-debug.yml')
+	})
+
+	test('renders unknown jobs without their commands', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['yarn.lock'],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'ios.yml',
+					jobs: [
+						{
+							id: 'build',
+							prediction: {
+								reason: 'dependency changes has unknown result',
+								status: 'unknown',
+							},
+							steps: [{ run: 'yarn build:ios' }],
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result)
+		expect(output).toContain('[unknown]')
+		expect(output).toContain('dependency changes has unknown result')
+		expect(output).not.toContain('yarn build:ios')
+	})
+
+	test('hides guard jobs without rendering their scripts by default', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['yarn.lock'],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'ios.yml',
+					jobs: [
+						{
+							id: 'changes',
+							outputs: { should_run: '${{ steps.affected.outputs.should_run }}' },
+							prediction: {
+								outputs: { should_run: 'false' },
+								status: 'will_run',
+							},
+							steps: [{ run: 'npx turbo@2 query affected --packages' }],
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result)
+		expect(output).toContain('Skipped by guards')
+		expect(output).toContain('should_run=false')
+		expect(output).not.toContain('guard/output job')
+		expect(output).not.toContain('npx turbo@2 query affected')
+	})
+
+	test('hides result jobs without rendering their scripts by default', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['yarn.lock'],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'ios.yml',
+					jobs: [
+						{
+							id: 'result',
+							if: 'always()',
+							prediction: { status: 'will_run' },
+							steps: [{ run: 'exit 1' }],
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result)
+		expect(output).toContain('No actionable jobs')
+		expect(output).not.toContain('status aggregator')
+		expect(output).not.toContain('exit 1')
+	})
+
+	test('renders skipped and bookkeeping jobs with all option', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['yarn.lock'],
+			event: 'pull_request',
+			matchedWorkflows: [
+				{
+					fileName: 'ios.yml',
+					jobs: [
+						{
+							id: 'changes',
+							outputs: { should_run: '${{ steps.affected.outputs.should_run }}' },
+							prediction: {
+								outputs: { should_run: 'false' },
+								status: 'will_run',
+							},
+							steps: [{ run: 'npx turbo@2 query affected --packages' }],
+						},
+						{
+							id: 'build',
+							if: "needs.changes.outputs.should_run == 'true'",
+							prediction: {
+								reason: 'if condition evaluated false',
+								status: 'will_skip',
+							},
+							steps: [],
+							uses: './.github/workflows/ios-build-debug.yml',
+						},
+						{
+							id: 'result',
+							if: 'always()',
+							prediction: { status: 'will_run' },
+							steps: [{ run: 'exit 1' }],
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result, { all: true })
+		expect(output).toContain('[skip]')
+		expect(output).toContain('guard/output job')
+		expect(output).toContain('status aggregator')
+		expect(output).not.toContain('ios-build-debug.yml')
+		expect(output).not.toContain('exit 1')
+	})
+
+	test('renders step-level uses with all option', () => {
+		const result: EvaluationResult = {
+			baseBranch: 'main',
+			branch: 'feature-x',
+			changedFiles: ['src/index.ts'],
+			event: 'push',
+			matchedWorkflows: [
+				{
+					fileName: 'ci.yml',
+					jobs: [
+						{
+							id: 'test',
+							steps: [{ uses: 'actions/checkout@v4' }, { run: 'npm test' }],
+						},
+					],
+				},
+			],
+		}
+
+		const output = renderResult(result, { all: true })
+		expect(output).toContain('actions/checkout@v4')
+		expect(output).toContain('npm test')
 	})
 })

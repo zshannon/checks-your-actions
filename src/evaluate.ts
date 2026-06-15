@@ -2,11 +2,11 @@ import picomatch from 'picomatch'
 import type {
 	EvaluationResult,
 	GitState,
-	MatchedJob,
 	MatchedWorkflow,
 	Workflow,
 	WorkflowTrigger,
 } from './types.ts'
+import { predictJobs } from './job-prediction.ts'
 
 function matchesBranch(branch: string, trigger: WorkflowTrigger): boolean {
 	if (trigger.branches && trigger.branchesIgnore) {
@@ -85,14 +85,7 @@ export function evaluate(workflows: Workflow[], state: GitState): EvaluationResu
 		if (!matchesTrigger(workflow, state)) {
 			continue
 		}
-		const jobs: MatchedJob[] = workflow.jobs.map(job => ({
-			id: job.id,
-			if: job.if,
-			name: job.name,
-			needs: job.needs,
-			steps: job.steps,
-			uses: job.uses,
-		}))
+		const jobs = predictJobs(workflow.jobs, state)
 		matchedWorkflows.push({ fileName: workflow.fileName, jobs, name: workflow.name })
 	}
 	return {

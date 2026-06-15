@@ -8,7 +8,7 @@ Know what CI will do before you push.
 $ cya --event push
 
 publish.yml (Publish to npm):
-  publish:
+  publish: [run]
     - actions/checkout@v4
     - oven-sh/setup-bun@v2
     - bun install --frozen-lockfile
@@ -55,6 +55,7 @@ cya --event workflow_dispatch
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--all` | `false` | Show skipped and bookkeeping jobs |
 | `--event` | `pull_request` | Event type to simulate: `push`, `pull_request`, `workflow_dispatch` |
 | `--base` | `main` | Base branch for comparison (used for diff and PR branch filters) |
 | `--help` | | Show usage |
@@ -68,28 +69,35 @@ cya --event workflow_dispatch
 - `pull_request` triggers with the same filters (branch filters check the base branch, matching GitHub's behavior)
 - `workflow_dispatch` triggers (shown only with `--event workflow_dispatch`)
 - Shorthand trigger syntax (`on: push`, `on: [push, pull_request]`)
+- A conservative subset of job-level `if:` expressions, including `needs.<job>.outputs.<name>`, `needs.*.result`, `always()`, `success()`, `failure()`, `cancelled()`, `contains(...)`, `github.event_name`, and absent `inputs.*` values
+- Common guard-output jobs using `dorny/paths-filter` or `npx turbo@2 query affected --packages`
 
 It also detects and skips:
 - Tag-only push triggers (warns instead of false-positive matching)
 - Mutually exclusive filters (`branches` + `branches-ignore` on the same trigger)
 
-Changed files are determined by `git diff` against your base branch, plus any staged, unstaged, and untracked files.
+Changed files are determined by `git diff` against your base branch, plus any staged, unstaged, and untracked files. When a matched workflow uses Turbo's affected-package query in a guard job, `cya` runs the same local query and uses its package list to resolve the guard output.
 
 ## What it doesn't evaluate
 
-- Job-level `if:` conditions (shown in output but not evaluated — they often depend on GitHub context not available locally)
+- Arbitrary job-level `if:` expressions outside the supported local subset
+- Arbitrary shell scripts or step outputs outside recognized guard-output patterns
 - Matrix strategies (jobs shown once, not expanded per matrix combination)
 - `workflow_run`, `schedule`, `release`, and other non-push/PR triggers
 - Reusable workflow contents (the `uses:` reference is shown, but the called workflow isn't parsed)
-- GitHub expression syntax (`${{ }}`) in any context
+- GitHub expression syntax (`${{ }}`) in arbitrary contexts
 
 ## Output
 
 For each matched workflow, `cya` shows:
 - Workflow filename and name
-- Each job (with name, dependency chain, and `if:` condition if present)
-- Each step's `run` command or `uses` action reference
-- Reusable workflow references for jobs that call other workflows
+- Runnable jobs predicted to run
+- Unknown jobs that need inspection
+- Shell commands from runnable jobs
+- Reusable workflow references for jobs predicted to run
+- A compact skipped-workflow summary when all actionable jobs in a matched workflow are skipped by guards
+
+By default, `cya` hides skipped jobs, guard-output jobs, status aggregator jobs, and step-level `uses:` actions. Use `--all` to inspect the full audit view with `[run]`, `[skip]`, and `[unknown]` status for every parsed job.
 
 If no workflows match, it tells you why.
 
