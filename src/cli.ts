@@ -10,7 +10,7 @@ import { renderResult } from './render.ts'
 const main = defineCommand({
 	meta: {
 		description:
-			'Determine which GitHub Actions workflows would trigger given the current git state',
+			'Determine which GitHub Actions workflows and jobs would run given the current git state',
 		name: 'cya',
 		version: pkg.version,
 	},
