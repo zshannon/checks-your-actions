@@ -49,6 +49,12 @@ cya --base develop
 
 # Check workflow_dispatch triggers
 cya --event workflow_dispatch
+
+# After running a printed check, mark it succeeded
+cya ok test
+
+# After running every printed check, mark the whole unchanged plan succeeded
+cya ok --all
 ```
 
 ### Options
@@ -98,6 +104,8 @@ For each matched workflow, `cya` shows:
 - A compact skipped-workflow summary when all actionable jobs in a matched workflow are skipped by guards
 
 By default, `cya` hides skipped jobs, guard-output jobs, status aggregator jobs, and step-level `uses:` actions. Use `--all` to inspect the full audit view with `[run]`, `[skip]`, and `[unknown]` status for every parsed job.
+
+Each actionable job gets a check id in square brackets. `cya ok <check-id>` records that the check succeeded for the last unchanged `cya` plan. `cya ok --all` records every actionable check in that plan. Later `cya` runs show `[cached success]` when the current event, base branch, workflow file, changed file list, and changed file contents still match the recorded success.
 
 If no workflows match, it tells you why.
 

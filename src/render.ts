@@ -1,4 +1,5 @@
 import { colorize } from 'consola/utils'
+import { isActionableJob, isGuardJob, isResultJob } from './job-kind.ts'
 import type { EvaluationResult, MatchedJob, MatchedWorkflow } from './types.ts'
 
 type RenderOptions = {
@@ -24,7 +25,7 @@ function renderActionResult(result: EvaluationResult): string {
 	const skippedSummaries: string[] = []
 
 	for (const workflow of result.matchedWorkflows) {
-		const jobs = workflow.jobs.filter(shouldRenderByDefault)
+		const jobs = workflow.jobs.filter(isActionableJob)
 		if (jobs.length === 0) {
 			const summary = renderSkippedWorkflowSummary(workflow)
 			if (summary) {
@@ -81,9 +82,16 @@ function renderAuditResult(result: EvaluationResult): string {
 
 function renderJob(lines: string[], job: MatchedJob, options: RenderOptions): void {
 	const prediction = job.prediction ?? { status: 'will_run' as const }
+	const checkLabel = job.checkId ? `[${job.checkId}] ` : ''
 	const jobLabel =
 		job.name && job.name !== job.id ? `${job.id} (${job.name}):` : `${job.id}:`
-	lines.push(`  ${colorize('cyan', jobLabel)} ${renderStatus(prediction.status)}`)
+	const status = job.cacheHit ? renderCachedStatus() : renderStatus(prediction.status)
+	lines.push(`  ${colorize('cyan', `${checkLabel}${jobLabel}`)} ${status}`)
+
+	if (job.cacheHit) {
+		lines.push(`    ${colorize('dim', `succeeded at ${job.cacheHit.markedAt}`)}`)
+		return
+	}
 
 	if (job.if) {
 		lines.push(`    ${colorize('dim', `if: ${job.if}`)}`)
@@ -135,15 +143,8 @@ function renderJob(lines: string[], job: MatchedJob, options: RenderOptions): vo
 	}
 }
 
-function shouldRenderByDefault(job: MatchedJob): boolean {
-	const prediction = job.prediction ?? { status: 'will_run' as const }
-	if (prediction.status === 'will_skip') {
-		return false
-	}
-	if (prediction.status === 'unknown') {
-		return true
-	}
-	return !isGuardJob(job) && !isResultJob(job)
+function renderCachedStatus(): string {
+	return colorize('green', '[cached success]')
 }
 
 function renderStatus(status: 'unknown' | 'will_run' | 'will_skip'): string {
@@ -155,28 +156,6 @@ function renderStatus(status: 'unknown' | 'will_run' | 'will_skip'): string {
 		case 'unknown':
 			return colorize('magenta', '[unknown]')
 	}
-}
-
-function isGuardJob(job: {
-	id: string
-	outputs?: Record<string, string>
-	steps: { run?: string; uses?: string }[]
-}): boolean {
-	return (
-		job.id === 'changes' ||
-		Object.keys(job.outputs ?? {}).some(
-			output => output === 'should_run' || output === 'run_all'
-		) ||
-		job.steps.some(
-			step =>
-				step.run?.includes('turbo@2 query affected') ||
-				step.uses?.startsWith('dorny/paths-filter@')
-		)
-	)
-}
-
-function isResultJob(job: { id: string; if?: string }): boolean {
-	return job.id === 'result' && job.if === 'always()'
 }
 
 function renderSkippedWorkflowSummary(workflow: MatchedWorkflow): string | undefined {

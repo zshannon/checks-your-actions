@@ -64,7 +64,13 @@ export type JobPrediction = {
 	status: JobPredictionStatus
 }
 
+export type CheckCacheHit = {
+	markedAt: string
+}
+
 export type MatchedJob = {
+	cacheHit?: CheckCacheHit
+	checkId?: string
 	id: string
 	if?: string
 	name?: string
