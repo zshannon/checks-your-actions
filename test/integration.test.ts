@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { stripVTControlCharacters } from 'node:util'
 
 const tempDirs: string[] = []
 
@@ -27,13 +28,17 @@ describe('cya integration', () => {
 		const cwd = await createRepo()
 		const cli = join(import.meta.dir, '../src/cli.ts')
 
-		const first = await $`bun run ${cli} --event push`.cwd(cwd).text()
+		const first = stripVTControlCharacters(
+			await $`bun run ${cli} --event push`.cwd(cwd).text()
+		)
 		expect(first).toContain('[test] test: [run]')
 
 		const ok = await $`bun run ${cli} ok --all`.cwd(cwd).text()
 		expect(ok).toContain('Marked 1 check succeeded.')
 
-		const second = await $`bun run ${cli} --event push`.cwd(cwd).text()
+		const second = stripVTControlCharacters(
+			await $`bun run ${cli} --event push`.cwd(cwd).text()
+		)
 		expect(second).toContain('[test] test: [cached success]')
 		expect(second).not.toContain('npm test')
 	})

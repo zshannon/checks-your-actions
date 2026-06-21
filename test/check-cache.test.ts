@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { stripVTControlCharacters } from 'node:util'
 import {
 	applyCheckCache,
 	buildCheckPlan,
@@ -27,13 +28,13 @@ describe('check cache', () => {
 		const first = resultWithJobs(['test'])
 		const plan = await applyCheckCache(cwd, first)
 		expect(plan.checks.map(check => check.checkId)).toEqual(['test'])
-		expect(renderResult(first)).toContain('[test] test: [run]')
+		expect(stripVTControlCharacters(renderResult(first))).toContain('[test] test: [run]')
 
 		await markChecksSucceeded(cwd, plan, plan.checks)
 
 		const second = resultWithJobs(['test'])
 		await applyCheckCache(cwd, second)
-		const output = renderResult(second)
+		const output = stripVTControlCharacters(renderResult(second))
 		expect(output).toContain('[test] test: [cached success]')
 		expect(output).not.toContain('npm test')
 	})
@@ -47,7 +48,7 @@ describe('check cache', () => {
 		const result = resultWithJobs(['test'])
 		await applyCheckCache(cwd, result)
 
-		expect(renderResult(result)).toContain('[test] test: [run]')
+		expect(stripVTControlCharacters(renderResult(result))).toContain('[test] test: [run]')
 	})
 
 	test('uses workflow-qualified ids when job ids are duplicated', async () => {
